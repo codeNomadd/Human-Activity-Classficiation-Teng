@@ -1,0 +1,9 @@
+
+Summary of 5 runs:
+Seed 0: Accuracy = 1.0
+Seed 1: Accuracy = 1.0
+Seed 2: Accuracy = 1.0
+Seed 3: Accuracy = 1.0
+Seed 4: Accuracy = 1.0
+
+Mean Accuracy: 1.0000

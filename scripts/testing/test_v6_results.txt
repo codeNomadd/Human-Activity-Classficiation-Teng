@@ -1,0 +1,7 @@
+Seed 0: Mean LOSO Accuracy = 1.0
+Seed 1: Mean LOSO Accuracy = 1.0
+Seed 2: Mean LOSO Accuracy = 1.0
+Seed 3: Mean LOSO Accuracy = 1.0
+Seed 4: Mean LOSO Accuracy = 1.0
+
+Mean of 5 runs: 1.0000
