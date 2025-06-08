@@ -105,7 +105,7 @@ We also applied data augmentation (jitter, scaling, shifting) to the training se
 ## 👥 Contributors
 
 - **Sensor Source:** Custom data collected using TENG-based sensing
-- **Team Members:** [Irmuun]
+- **Team Members:** [Irmuun,Mansurjon]
 
 ---
 
