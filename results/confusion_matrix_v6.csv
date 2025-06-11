@@ -1,0 +1,4 @@
+,Walking,Running,Jumping
+Walking,30.0,0.0,0.0
+Running,0.0,30.0,0.0
+Jumping,0.0,0.0,30.0

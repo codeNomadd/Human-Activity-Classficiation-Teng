@@ -61,59 +61,70 @@ def augment_signal(signal, jitter_std=0.02, scale_range=(0.9, 1.1), shift_range=
     signal_aug += np.random.uniform(*shift_range)
     return signal_aug
 
-# === Load data ===
-X_500 = np.load(os.path.join(DATA_DIR, 'X_500.npy'))  # (90, 500)
-y_500 = np.load(os.path.join(DATA_DIR, 'y_500.npy'))  # (90,)
-X_100 = np.load(os.path.join(DATA_DIR, 'X_100_raw.npy'))  # (450, 100)
-y_100 = np.load(os.path.join(DATA_DIR, 'y_100_raw.npy'))  # (450,)
+def train_and_evaluate(seed=42):
+    """Train and evaluate the model, return confusion matrix and accuracy."""
+    np.random.seed(seed)
+    random.seed(seed)
 
-# === Split long samples ===
-X_train_raw, X_test_raw, y_train_raw, y_test = train_test_split(
-    X_500, y_500, test_size=0.3, stratify=y_500, random_state=seed
-)
+    # === Load data ===
+    X_500 = np.load(os.path.join(DATA_DIR, 'X_500.npy'))  # (90, 500)
+    y_500 = np.load(os.path.join(DATA_DIR, 'y_500.npy'))  # (90,)
+    X_100 = np.load(os.path.join(DATA_DIR, 'X_100_raw.npy'))  # (450, 100)
+    y_100 = np.load(os.path.join(DATA_DIR, 'y_100_raw.npy'))  # (450,)
 
-# === Augment long samples ===
-X_aug, y_aug = [], []
-for x, label in zip(X_train_raw, y_train_raw):
-    X_aug.append(x)
-    y_aug.append(label)
-    for _ in range(3):
-        X_aug.append(augment_signal(x))
+    # === Split long samples ===
+    X_train_raw, X_test_raw, y_train_raw, y_test = train_test_split(
+        X_500, y_500, test_size=0.3, stratify=y_500, random_state=seed
+    )
+
+    # === Augment long samples ===
+    X_aug, y_aug = [], []
+    for x, label in zip(X_train_raw, y_train_raw):
+        X_aug.append(x)
         y_aug.append(label)
-X_aug = np.array(X_aug)
-y_aug = np.array(y_aug)
+        for _ in range(3):
+            X_aug.append(augment_signal(x))
+            y_aug.append(label)
+    X_aug = np.array(X_aug)
+    y_aug = np.array(y_aug)
 
-# === Feature fusion: combine long sample features + short segment features ===
-def aggregate_segment_features(X_short, y_short, label, method='mean'):
-    """Return the aggregated feature vector (mean or max) for a class label."""
-    seg_feats = np.array([extract_features(x) for x, y in zip(X_short, y_short) if y == label])
-    return np.mean(seg_feats, axis=0) if method == 'mean' else np.max(seg_feats, axis=0)
+    # === Feature fusion: combine long sample features + short segment features ===
+    def aggregate_segment_features(X_short, y_short, label, method='mean'):
+        """Return the aggregated feature vector (mean or max) for a class label."""
+        seg_feats = np.array([extract_features(x) for x, y in zip(X_short, y_short) if y == label])
+        return np.mean(seg_feats, axis=0) if method == 'mean' else np.max(seg_feats, axis=0)
 
-X_train_features = []
-for x, y in zip(X_aug, y_aug):
-    long_feat = extract_features(x)
-    short_feat = aggregate_segment_features(X_100, y_100, y)
-    combined_feat = np.concatenate([long_feat, short_feat])
-    X_train_features.append(combined_feat)
-X_train_features = np.array(X_train_features)
+    X_train_features = []
+    for x, y in zip(X_aug, y_aug):
+        long_feat = extract_features(x)
+        short_feat = aggregate_segment_features(X_100, y_100, y)
+        combined_feat = np.concatenate([long_feat, short_feat])
+        X_train_features.append(combined_feat)
+    X_train_features = np.array(X_train_features)
 
-X_test_features = []
-for x, y in zip(X_test_raw, y_test):
-    long_feat = extract_features(x)
-    short_feat = aggregate_segment_features(X_100, y_100, y)
-    combined_feat = np.concatenate([long_feat, short_feat])
-    X_test_features.append(combined_feat)
-X_test_features = np.array(X_test_features)
+    X_test_features = []
+    for x, y in zip(X_test_raw, y_test):
+        long_feat = extract_features(x)
+        short_feat = aggregate_segment_features(X_100, y_100, y)
+        combined_feat = np.concatenate([long_feat, short_feat])
+        X_test_features.append(combined_feat)
+    X_test_features = np.array(X_test_features)
 
-# === XGBoost Classifier ===
-clf = XGBClassifier(n_estimators=200, random_state=seed, use_label_encoder=False, eval_metric='mlogloss')
-clf.fit(X_train_features, y_aug)
+    # === XGBoost Classifier ===
+    clf = XGBClassifier(n_estimators=200, random_state=seed, use_label_encoder=False, eval_metric='mlogloss')
+    clf.fit(X_train_features, y_aug)
 
-# === Evaluation ===
-y_pred = clf.predict(X_test_features)
-acc = accuracy_score(y_test, y_pred)
-print("Confusion Matrix:")
-print(confusion_matrix(y_test, y_pred))
-print("\nClassification Report:")
-print(classification_report(y_test, y_pred, target_names=["Walking", "Running", "Jumping"]))
-print(f"Accuracy: {acc:.4f}")
+    # === Evaluation ===
+    y_pred = clf.predict(X_test_features)
+    cm = confusion_matrix(y_test, y_pred)
+    acc = accuracy_score(y_test, y_pred)
+
+    return cm, acc
+
+if __name__ == "__main__":
+    cm, acc = train_and_evaluate()
+    print("Confusion Matrix:")
+    print(cm)
+    print("\nClassification Report:")
+    print(classification_report(y_test, y_pred, target_names=["Walking", "Running", "Jumping"]))
+    print(f"Accuracy: {acc:.4f}")

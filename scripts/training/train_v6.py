@@ -46,61 +46,72 @@ def aggregate_segment_features(X_short, y_short, label, method='mean'):
     seg_feats = np.array([extract_features(x) for x, y in zip(X_short, y_short) if y == label])
     return np.mean(seg_feats, axis=0) if method == 'mean' else np.max(seg_feats, axis=0)
 
-# Load subject-wise data
-subject_data = np.load(os.path.join(DATA_DIR, 'subject_data_500.npz'), allow_pickle=True)
-subjects = list(subject_data.keys())
+def train_and_evaluate(seed=42):
+    """Train and evaluate the model using LOSO, return confusion matrix and accuracy."""
+    np.random.seed(seed)
+    
+    # Load subject-wise data
+    subject_data = np.load(os.path.join(DATA_DIR, 'subject_data_500.npz'), allow_pickle=True)
+    subjects = list(subject_data.keys())
 
-# Load 100-point window data for feature fusion
-X_100 = np.load(os.path.join(DATA_DIR, 'X_100_raw.npy'))
-y_100 = np.load(os.path.join(DATA_DIR, 'y_100_raw.npy'))
+    # Load 100-point window data for feature fusion
+    X_100 = np.load(os.path.join(DATA_DIR, 'X_100_raw.npy'))
+    y_100 = np.load(os.path.join(DATA_DIR, 'y_100_raw.npy'))
 
-results = []
+    all_cm = np.zeros((3, 3))  # 3x3 confusion matrix for 3 classes
+    total_samples = 0
 
-for test_subject in subjects:
-    # Prepare train and test sets
-    X_test = subject_data[test_subject].item()['X']
-    y_test = subject_data[test_subject].item()['y']
-    X_train = []
-    y_train = []
-    for train_subject in subjects:
-        if train_subject == test_subject:
-            continue
-        X_train.append(subject_data[train_subject].item()['X'])
-        y_train.append(subject_data[train_subject].item()['y'])
-    X_train = np.concatenate(X_train, axis=0)
-    y_train = np.concatenate(y_train, axis=0)
+    for test_subject in subjects:
+        # Prepare train and test sets
+        X_test = subject_data[test_subject].item()['X']
+        y_test = subject_data[test_subject].item()['y']
+        X_train = []
+        y_train = []
+        for train_subject in subjects:
+            if train_subject == test_subject:
+                continue
+            X_train.append(subject_data[train_subject].item()['X'])
+            y_train.append(subject_data[train_subject].item()['y'])
+        X_train = np.concatenate(X_train, axis=0)
+        y_train = np.concatenate(y_train, axis=0)
 
-    # Feature extraction and fusion for training
-    X_train_features = []
-    for x, y in zip(X_train, y_train):
-        long_feat = extract_features(x)
-        short_feat = aggregate_segment_features(X_100, y_100, y)
-        combined_feat = np.concatenate([long_feat, short_feat])
-        X_train_features.append(combined_feat)
-    X_train_features = np.array(X_train_features)
+        # Feature extraction and fusion for training
+        X_train_features = []
+        for x, y in zip(X_train, y_train):
+            long_feat = extract_features(x)
+            short_feat = aggregate_segment_features(X_100, y_100, y)
+            combined_feat = np.concatenate([long_feat, short_feat])
+            X_train_features.append(combined_feat)
+        X_train_features = np.array(X_train_features)
 
-    # Feature extraction and fusion for testing
-    X_test_features = []
-    for x, y in zip(X_test, y_test):
-        long_feat = extract_features(x)
-        short_feat = aggregate_segment_features(X_100, y_100, y)
-        combined_feat = np.concatenate([long_feat, short_feat])
-        X_test_features.append(combined_feat)
-    X_test_features = np.array(X_test_features)
+        # Feature extraction and fusion for testing
+        X_test_features = []
+        for x, y in zip(X_test, y_test):
+            long_feat = extract_features(x)
+            short_feat = aggregate_segment_features(X_100, y_100, y)
+            combined_feat = np.concatenate([long_feat, short_feat])
+            X_test_features.append(combined_feat)
+        X_test_features = np.array(X_test_features)
 
-    # Train model
-    clf = RandomForestClassifier(n_estimators=100, random_state=42)
-    clf.fit(X_train_features, y_train)
+        # Train model
+        clf = RandomForestClassifier(n_estimators=100, random_state=seed)
+        clf.fit(X_train_features, y_train)
 
-    # Predict and evaluate
-    y_pred = clf.predict(X_test_features)
-    acc = accuracy_score(y_test, y_pred)
-    results.append(acc)
-    print(f"\nLOSO Fold: Test Subject {test_subject}")
-    print(f"Accuracy: {acc:.4f}")
-    print("Confusion Matrix:")
-    print(confusion_matrix(y_test, y_pred))
-    print("Classification Report:")
+        # Predict and evaluate
+        y_pred = clf.predict(X_test_features)
+        cm = confusion_matrix(y_test, y_pred)
+        all_cm += cm
+        total_samples += len(y_test)
+
+    # Calculate overall accuracy
+    acc = np.sum(np.diag(all_cm)) / total_samples
+
+    return all_cm, acc
+
+if __name__ == "__main__":
+    cm, acc = train_and_evaluate()
+    print("Overall Confusion Matrix:")
+    print(cm)
+    print("\nClassification Report:")
     print(classification_report(y_test, y_pred, target_names=["Walking", "Running", "Jumping"]))
-
-print(f"\nMean LOSO Accuracy: {np.mean(results):.4f}") 
+    print(f"Overall Accuracy: {acc:.4f}") 

@@ -108,6 +108,16 @@ LOSO Fold: Test Subject P3  Accuracy: 1.0000
 Mean LOSO Accuracy: 1.0000
 ```
 
+#### Confusion Matrices
+
+**Model v5:**
+
+![Confusion Matrix v5](results/confusion_matrix_v5.png)
+
+**Model v6 (LOSO):**
+
+![Confusion Matrix v6](results/confusion_matrix_v6.png)
+
 ### Key Achievements
 - Perfect accuracy in subject-independent testing
 - Robust generalization to new users

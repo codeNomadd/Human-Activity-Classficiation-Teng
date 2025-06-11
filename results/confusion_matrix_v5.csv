@@ -1,0 +1,4 @@
+,Walking,Running,Jumping
+Walking,9,0,0
+Running,0,9,0
+Jumping,0,0,9

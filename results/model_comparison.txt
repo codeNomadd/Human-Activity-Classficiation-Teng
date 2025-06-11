@@ -1,0 +1,15 @@
+Model Comparison Report
+=====================
+
+Model v5 Accuracy: 1.0000
+Model v6 Accuracy: 1.0000
+
+V5 Confusion Matrix:
+[[9 0 0]
+ [0 9 0]
+ [0 0 9]]
+
+V6 Confusion Matrix:
+[[30.  0.  0.]
+ [ 0. 30.  0.]
+ [ 0.  0. 30.]]
